@@ -18,6 +18,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <ros/ros.h>
@@ -30,9 +31,9 @@
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
 {
-  cv::Mat cvImage = cv_bridge::toCvShare(img, "bgr8")->image;
-  int width = img->width;
-  int height = img->height;
+  cv_bridge::cvImage_ptr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
+  int width = cv_ptr->image.cols;
+  int height = cv_ptr->image.rows;
 
   for (auto obj : objs_in_boxes->objects_vector)
   {
@@ -51,18 +52,17 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
 
     cv::Point left_top = cv::Point(xmin, ymin);
     cv::Point right_bottom = cv::Point(xmax, ymax);
-    cv::rectangle(cvImage, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
-    cv::rectangle(cvImage, cvPoint(xmin, ymin), cvPoint(xmax, ymin + 20), cv::Scalar(0, 255, 0), -1);
-    cv::putText(cvImage, ss.str(), cvPoint(xmin + 5, ymin + 20), cv::FONT_HERSHEY_PLAIN,
+    cv::rectangle(cv_ptr->image, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
+    cv::rectangle(cv_ptr->image, cvPoint(xmin, ymin), cvPoint(xmax, ymin + 20), cv::Scalar(0, 255, 0), -1);
+    cv::putText(cv_ptr->image, ss.str(), cvPoint(xmin + 5, ymin + 20), cv::FONT_HERSHEY_PLAIN,
                 1, cv::Scalar(0, 0, 255), 1);
   }
 
   std::stringstream ss;
   ss << "FPS: " << objs_in_boxes->fps;
-  cv::putText(cvImage, ss.str(), cvPoint(LINESPACING, LINESPACING),
+  cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
               cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
-  cv::imshow("image_viewer", cvImage);
-  cv::waitKey(5);
+  image_pub_.publish(cv_ptr->toImageMsg());
 }
 
 
@@ -70,6 +70,7 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "movidius_ncs_example_stream");
   ros::NodeHandle nh;
+  image_transport::ImageTransport it(nh);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
                                                          "/camera/color/image_raw",
                                                          1);
@@ -80,6 +81,7 @@ int main(int argc, char** argv)
                                                                                                 objSub,
                                                                                                 60);
   sync.registerCallback(boost::bind(&syncCb, _1, _2));
+  image_pub_ = it.advertise("/movidius_detect_images",1);
   ros::spin();
   return 0;
 }
