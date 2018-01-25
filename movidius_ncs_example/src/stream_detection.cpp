@@ -50,7 +50,7 @@ public:
   }
 
 
-  void syncCb(const sensor_msgs::ImageConstPtr& img,
+  int syncCb(const sensor_msgs::ImageConstPtr& img,
               const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
   {
     cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
@@ -85,6 +85,7 @@ public:
     cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
                 cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
     image_pub_.publish(cv_ptr->toImageMsg());
+    return 0;
   }
 };
 
