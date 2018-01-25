@@ -28,50 +28,15 @@
 
 #define LINESPACING 20
 
-void syncCb(const sensor_msgs::ImageConstPtr& img,
-            const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
-{
-  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
-  int width = cv_ptr->image.cols;
-  int height = cv_ptr->image.rows;
-
-  for (auto obj : objs_in_boxes->objects_vector)
-  {
-    std::stringstream ss;
-    ss << obj.object.object_name << ": " << obj.object.probability * 100 << '%';
-
-    int x = obj.roi.x_offset;
-    int y = obj.roi.y_offset;
-    int w = obj.roi.width;
-    int h = obj.roi.height;
-
-    int xmin = ((x - w / 2) > 0)? (x - w / 2) : 0;
-    int xmax = ((x + w / 2) < width)? (x + w / 2) : width;
-    int ymin = ((y - h / 2) > 0)? (y - h / 2) : 0;
-    int ymax = ((y + h / 2) < height)? (y + h / 2) : height;
-
-    cv::Point left_top = cv::Point(xmin, ymin);
-    cv::Point right_bottom = cv::Point(xmax, ymax);
-    cv::rectangle(cv_ptr->image, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
-    cv::rectangle(cv_ptr->image, cvPoint(xmin, ymin), cvPoint(xmax, ymin + 20), cv::Scalar(0, 255, 0), -1);
-    cv::putText(cv_ptr->image, ss.str(), cvPoint(xmin + 5, ymin + 20), cv::FONT_HERSHEY_PLAIN,
-                1, cv::Scalar(0, 0, 255), 1);
-  }
-
-  std::stringstream ss;
-  ss << "FPS: " << objs_in_boxes->fps;
-  cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
-              cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
-  image_pub_.publish(cv_ptr->toImageMsg());
-}
-
-image_transport::Publisher image_pub_;
-
-int main(int argc, char** argv)
-{
-  ros::init(argc, argv, "movidius_ncs_example_stream");
+class Movidius_detect {
   ros::NodeHandle nh;
-  image_transport::ImageTransport it(nh);
+  image_transport::ImageTransport it;
+  image_transport::Publisher image_pub_;
+
+public:
+  Movidius_detect()
+  : it(nh)
+  {
   image_pub_ = it.advertise("/movidius_detect_images",1);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
                                                          "/camera/color/image_raw",
@@ -83,6 +48,52 @@ int main(int argc, char** argv)
                                                                                                 objSub,
                                                                                                 60);
   sync.registerCallback(boost::bind(&syncCb, _1, _2));
+  }
+
+
+  void Movidius_detect::syncCb(const sensor_msgs::ImageConstPtr& img,
+              const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
+  {
+    cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
+    int width = cv_ptr->image.cols;
+    int height = cv_ptr->image.rows;
+
+    for (auto obj : objs_in_boxes->objects_vector)
+    {
+      std::stringstream ss;
+      ss << obj.object.object_name << ": " << obj.object.probability * 100 << '%';
+
+      int x = obj.roi.x_offset;
+      int y = obj.roi.y_offset;
+      int w = obj.roi.width;
+      int h = obj.roi.height;
+
+      int xmin = ((x - w / 2) > 0)? (x - w / 2) : 0;
+      int xmax = ((x + w / 2) < width)? (x + w / 2) : width;
+      int ymin = ((y - h / 2) > 0)? (y - h / 2) : 0;
+      int ymax = ((y + h / 2) < height)? (y + h / 2) : height;
+
+      cv::Point left_top = cv::Point(xmin, ymin);
+      cv::Point right_bottom = cv::Point(xmax, ymax);
+      cv::rectangle(cv_ptr->image, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
+      cv::rectangle(cv_ptr->image, cvPoint(xmin, ymin), cvPoint(xmax, ymin + 20), cv::Scalar(0, 255, 0), -1);
+      cv::putText(cv_ptr->image, ss.str(), cvPoint(xmin + 5, ymin + 20), cv::FONT_HERSHEY_PLAIN,
+                  1, cv::Scalar(0, 0, 255), 1);
+    }
+
+    std::stringstream ss;
+    ss << "FPS: " << objs_in_boxes->fps;
+    cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
+                cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
+    image_pub_.publish(cv_ptr->toImageMsg());
+  }
+};
+
+
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "movidius_ncs_example_stream");
+  Movidius_detect md;
   
   ros::spin();
   return 0;
