@@ -51,7 +51,7 @@ public:
   }
 
 
-  void Movidius_detect::syncCb(const sensor_msgs::ImageConstPtr& img,
+  void syncCb(const sensor_msgs::ImageConstPtr& img,
               const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
   {
     cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
