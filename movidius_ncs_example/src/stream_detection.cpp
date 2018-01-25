@@ -47,7 +47,6 @@ public:
   message_filters::TimeSynchronizer<sensor_msgs::Image, movidius_ncs_msgs::ObjectsInBoxes> sync(camSub,
                                                                                                 objSub,
                                                                                                 60);
-  sync.registerCallback(boost::bind(&syncCb, _1, _2));
   }
 
 
@@ -94,6 +93,7 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "movidius_ncs_example_stream");
   Movidius_detect md;
+  sync.registerCallback(boost::bind(&imd.syncCb, _1, _2));
   
   ros::spin();
   return 0;
