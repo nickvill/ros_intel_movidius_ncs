@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   movidius_ncs_msgs
   message_filters
   roslint
+  image_transport
 )
 
 find_package(OpenCV REQUIRED COMPONENTS
