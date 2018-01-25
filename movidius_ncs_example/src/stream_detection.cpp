@@ -84,7 +84,7 @@ int main(int argc, char** argv)
   message_filters::TimeSynchronizer<sensor_msgs::Image, movidius_ncs_msgs::ObjectsInBoxes> sync(camSub,
                                                                                                 objSub,
                                                                                                 60);
-  sync.registerCallback(boost::bind(&md.syncCb, _1, _2, &image_pub_));
+  sync.registerCallback(boost::bind(&syncCb, _1, _2, &image_pub_));
   
   ros::spin();
   return 0;
