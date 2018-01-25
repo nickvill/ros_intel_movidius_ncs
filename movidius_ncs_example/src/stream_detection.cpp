@@ -71,7 +71,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "movidius_ncs_example_stream");
   ros::NodeHandle nh;
   image_transport::ImageTransport it(nh);
-  image_transport::Publisher image_pub_;
+  extern image_transport::Publisher image_pub_;
   image_pub_ = it.advertise("/movidius_detect_images",1);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
                                                          "/camera/color/image_raw",
