@@ -26,11 +26,16 @@
 #include <movidius_ncs_msgs/ObjectInBox.h>
 #include <movidius_ncs_msgs/ObjectsInBoxes.h>
 
+#include <fla_msgs/ImageDetections.h>
+#include <fla_msgs/Detection.h>
+
 #define LINESPACING 20
 
 
 image_transport::Publisher image_pub_;
+ros::Publisher objdet_pub;
 std::vector<std::string> classes_;
+bool pub_image;
 
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
@@ -38,6 +43,10 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
   cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
   int width = cv_ptr->image.cols;
   int height = cv_ptr->image.rows;
+
+  fla_msgs::ImageDetections image_detections_msg;
+  image_detections_msg.header = cv_ptr->header;
+  image_detections_msg.frame_id = header.seq;
 
   for (auto obj : objs_in_boxes->objects_vector)
   {
@@ -56,20 +65,37 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
       int ymin = ((y - h / 2) > 0)? (y - h / 2) : 0;
       int ymax = ((y + h / 2) < height)? (y + h / 2) : height;
 
-      cv::Point left_top = cv::Point(xmin, ymin);
-      cv::Point right_bottom = cv::Point(xmax, ymax);
-      cv::rectangle(cv_ptr->image, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
-      cv::rectangle(cv_ptr->image, cvPoint(xmin, ymin), cvPoint(xmax, ymin + 20), cv::Scalar(0, 255, 0), -1);
-      cv::putText(cv_ptr->image, ss.str(), cvPoint(xmin + 5, ymin + 20), cv::FONT_HERSHEY_PLAIN,
-                  1, cv::Scalar(0, 0, 255), 1);
+      fla_msgs::Detection detection_msg;
+      detection_msg.class_name = obj.object.object_name;
+      int id = std::find(classes_.begin(), classes_.end(), obj.object.object_name) - classes_.begin(); 
+      detection_msg.object_id = id;
+      detection_msg.confidence = obj.object.probability;
+      detection_msg.x_min = xmin;
+      detection_msg.y_min = ymin;
+      detection_msg.x_max = xmax;
+      image_detections_msg.detections.push_back(detection_msg);
+
+
+      if (pub_image) {
+        cv::Point left_top = cv::Point(xmin, ymin);
+        cv::Point right_bottom = cv::Point(xmax, ymax);
+        cv::rectangle(cv_ptr->image, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
+        cv::rectangle(cv_ptr->image, cvPoint(xmin, ymin), cvPoint(xmax, ymin + 20), cv::Scalar(0, 255, 0), -1);
+        cv::putText(cv_ptr->image, ss.str(), cvPoint(xmin + 5, ymin + 20), cv::FONT_HERSHEY_PLAIN,
+                    1, cv::Scalar(0, 0, 255), 1);
+      }
     }
   }
 
-  std::stringstream ss;
-  ss << "FPS: " << objs_in_boxes->fps;
-  cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
-              cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
-  image_pub_.publish(cv_ptr->toImageMsg());
+  objdet_pub.publish(image_detections_msg);
+
+  if (pub_image) {
+    std::stringstream ss;
+    ss << "FPS: " << objs_in_boxes->fps;
+    cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
+                cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
+    image_pub_.publish(cv_ptr->toImageMsg());
+  }
 }
 
 
@@ -79,7 +105,9 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   image_transport::ImageTransport it(nh);
   nh.getParam("classes", classes_);
+  nh.getParam("pub_image", pub_image);
   image_pub_ = it.advertise("/movidius_detect_images",1);
+  objdet_pub = nh.advertise<fla_msgs::ImageDetections>("/detections",0);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
                                                          "/camera/color/image_raw",
                                                          1);
