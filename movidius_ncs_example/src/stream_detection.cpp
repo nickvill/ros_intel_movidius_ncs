@@ -40,7 +40,7 @@ bool pub_image;
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
 {
-  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvCopy(img, "bgr8");
+  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
   int width = cv_ptr->image.cols;
   int height = cv_ptr->image.rows;
 
