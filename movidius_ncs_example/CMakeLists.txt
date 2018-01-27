@@ -23,6 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
   roslint
   image_transport
+  fla_msgs
 )
 
 find_package(OpenCV REQUIRED COMPONENTS
