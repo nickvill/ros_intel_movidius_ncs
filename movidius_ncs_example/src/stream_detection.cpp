@@ -106,6 +106,7 @@ int main(int argc, char** argv)
   image_transport::ImageTransport it(nh);
   nh.getParam("classes", classes_);
   nh.getParam("pub_image", pub_image);
+  std::cout << "pub image type " << typeid(pub_image).name() << std::endl;
   image_pub_ = it.advertise("/movidius_detect_images",1);
   objdet_pub = nh.advertise<fla_msgs::ImageDetections>("/detections",0);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
