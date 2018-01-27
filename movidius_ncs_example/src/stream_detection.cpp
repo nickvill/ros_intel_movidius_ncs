@@ -40,13 +40,15 @@ bool pub_image;
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
 {
-  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
+  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvCopy(img, "bgr8");
   int width = cv_ptr->image.cols;
   int height = cv_ptr->image.rows;
 
   fla_msgs::ImageDetections image_detections_msg;
-  image_detections_msg.header = cv_ptr->header;
-  image_detections_msg.frame_id = header.seq;
+
+  std_msgs::Header img_header = cv_ptr->header;
+  image_detections_msg.header = img_header;
+  image_detections_msg.frame_id = img_header.seq;
 
   for (auto obj : objs_in_boxes->objects_vector)
   {
