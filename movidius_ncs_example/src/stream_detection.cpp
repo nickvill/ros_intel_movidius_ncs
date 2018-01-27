@@ -30,7 +30,7 @@
 
 
 image_transport::Publisher image_pub_;
-std::vector<std::float> classes_;
+std::vector<std::string> classes_;
 
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
