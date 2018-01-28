@@ -40,10 +40,11 @@ bool pub_image;
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
 {
-  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(img, "bgr8");
+  cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvCopy(img, "bgr8");
   int width = cv_ptr->image.cols;
   int height = cv_ptr->image.rows;
 
+  // Create the Image Detection message
   fla_msgs::ImageDetections image_detections_msg;
 
   std_msgs::Header img_header = cv_ptr->header;
@@ -67,6 +68,7 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
       int ymin = ((y - h / 2) > 0)? (y - h / 2) : 0;
       int ymax = ((y + h / 2) < height)? (y + h / 2) : height;
 
+      // Create the detection message
       fla_msgs::Detection detection_msg;
       detection_msg.class_name = obj.object.object_name;
       int id = std::find(classes_.begin(), classes_.end(), obj.object.object_name) - classes_.begin(); 
@@ -89,8 +91,10 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
     }
   }
 
+  // Publish the Detections
   objdet_pub.publish(image_detections_msg);
 
+  // Publish the Image with Detections
   if (pub_image) {
     std::stringstream ss;
     ss << "FPS: " << objs_in_boxes->fps;
@@ -108,8 +112,6 @@ int main(int argc, char** argv)
   image_transport::ImageTransport it(nh);
   nh.getParam("classes", classes_);
   nh.getParam("pub_image", pub_image);
-  std::cout << "true: 1; false: 0 " << pub_image << std::endl;
-  std::cout << "pub image type " << typeid(pub_image).name() << std::endl;
   image_pub_ = it.advertise("/movidius_detect_images",1);
   objdet_pub = nh.advertise<fla_msgs::ImageDetections>("/detections",0);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
