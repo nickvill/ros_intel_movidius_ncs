@@ -91,7 +91,8 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
       }
       image_detections_msg.detections.push_back(detection_msg);
 
-      if (pub_image) {
+      if (pub_image) 
+      {
         cv::Point left_top = cv::Point(xmin, ymin);
         cv::Point right_bottom = cv::Point(xmax, ymax);
         cv::rectangle(cv_ptr->image, left_top, right_bottom, cv::Scalar(0, 255, 0), 1, cv::LINE_8, 0);
@@ -103,10 +104,14 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
   }
 
   // Publish the Detections
-  objdet_pub.publish(image_detections_msg);
+  if (image_detections_msg.detections.size() != 0)
+  {
+    objdet_pub.publish(image_detections_msg);
+  }
 
   // Publish the Image with Detections
-  if (pub_image) {
+  if (pub_image) 
+  {
     std::stringstream ss;
     ss << "FPS: " << objs_in_boxes->fps;
     cv::putText(cv_ptr->image, ss.str(), cvPoint(LINESPACING, LINESPACING),
