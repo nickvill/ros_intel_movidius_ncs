@@ -36,6 +36,7 @@ image_transport::Publisher image_pub_;
 ros::Publisher objdet_pub;
 std::vector<std::string> classes_;
 bool pub_image;
+bool use_flea3_;
 
 void syncCb(const sensor_msgs::ImageConstPtr& img,
             const movidius_ncs_msgs::ObjectsInBoxes::ConstPtr& objs_in_boxes)
@@ -74,11 +75,21 @@ void syncCb(const sensor_msgs::ImageConstPtr& img,
       int id = std::find(classes_.begin(), classes_.end(), obj.object.object_name) - classes_.begin(); 
       detection_msg.object_id = id;
       detection_msg.confidence = obj.object.probability;
-      detection_msg.x_min = xmin;
-      detection_msg.y_min = ymin;
-      detection_msg.x_max = xmax;
-      image_detections_msg.detections.push_back(detection_msg);
 
+      //Invert coordinates if using flea3
+      if (use_flea3_) 
+      {
+        detection_msg.x_min = width - xmin;
+        detection_msg.y_min = height - ymin;
+        detection_msg.x_max = width - xmax;
+        detection_msg.y_max = height - ymax;
+      } else {
+        detection_msg.x_min = xmin;
+        detection_msg.y_min = ymin;
+        detection_msg.x_max = xmax;
+        detection_msg.y_max = ymax;
+      }
+      image_detections_msg.detections.push_back(detection_msg);
 
       if (pub_image) {
         cv::Point left_top = cv::Point(xmin, ymin);
@@ -112,6 +123,7 @@ int main(int argc, char** argv)
   image_transport::ImageTransport it(nh);
   nh.getParam("classes", classes_);
   nh.getParam("pub_image", pub_image);
+  nh.getParam("use_flea3", use_flea3_);
   image_pub_ = it.advertise("/movidius_detect_images",1);
   objdet_pub = nh.advertise<fla_msgs::ImageDetections>("/detections",0);
   message_filters::Subscriber<sensor_msgs::Image> camSub(nh,
